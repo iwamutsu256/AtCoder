@@ -1,0 +1,286 @@
+// simulated_annealing.cpp
+
+#include <iostream>
+#include <vector>
+#include <unordered_map>
+#include <cmath>
+#include <algorithm>
+#include <chrono>
+#include <random>
+#include <limits>
+
+using namespace std;
+using namespace std::chrono;
+
+struct Point {
+    int x, y;
+
+    int dist(const Point& p) const {
+        return abs(x - p.x) + abs(y - p.y);
+    }
+};
+
+struct Input {
+    int order_count;
+    int pickup_count;
+    Point office;
+    vector<Point> restaurants;
+    vector<Point> destinations;
+
+    static Input read() {
+        Input input;
+        input.order_count = 1000;
+        input.pickup_count = 50;
+        input.office = {400, 400};
+
+        for (int i = 0; i < input.order_count; ++i) {
+            int a, b, c, d;
+            cin >> a >> b >> c >> d;
+            input.restaurants.push_back({a, b});
+            input.destinations.push_back({c, d});
+        }
+        return input;
+    }
+};
+
+struct Output {
+    int dist_sum;
+    vector<int> orders;
+    vector<Point> route;
+    unordered_map<int, int> destination_dict;
+    unordered_map<int, int> restaurant_dict;
+    double time;
+
+    Output(const vector<int>& orders, const vector<Point>& route,
+           const unordered_map<int, int>& destination_dict,
+           const unordered_map<int, int>& restaurant_dict,
+           double time)
+        : orders(orders), route(route), destination_dict(destination_dict), restaurant_dict(restaurant_dict), time(time) 
+    {
+        dist_sum = 0;
+        for (size_t i = 0; i < route.size() - 1; ++i) {
+            dist_sum += route[i].dist(route[i + 1]);
+        }
+    }
+
+    void print_output() const {
+        cout << orders.size() << " ";
+        for (int order : orders) cout << order + 1 << " ";
+        cout << endl;
+
+        cout << route.size();
+        for (const auto& p : route) cout << " " << p.x << " " << p.y;
+        cout << endl;
+    }
+};
+Output solve_greedy(const Input& input_data) {
+    vector<int> candidates;
+    vector<int> orders;
+    vector<Point> route;
+    unordered_map<int, int> restaurant_dict;
+    unordered_map<int, int> destination_dict;
+
+    auto start_time = steady_clock::now();
+
+    for (int i = 0; i < input_data.order_count; ++i) {
+        if (input_data.office.dist(input_data.restaurants[i]) <= 400 &&
+            input_data.office.dist(input_data.destinations[i]) <= 400) 
+        {
+            candidates.push_back(i);
+        }
+    }
+
+    vector<int> true_candidate;
+
+    for (int i = 0; i < input_data.pickup_count; ++i) {
+        int min_dist = numeric_limits<int>::max();
+        int nearest_restaurant = -1;
+
+        for (int j : candidates) {
+            int distance = 0;
+
+            for (int k : true_candidate) {
+                distance += pow(input_data.restaurants[j].dist(input_data.restaurants[k]), 3);
+                distance += pow(input_data.destinations[j].dist(input_data.destinations[k]), 3);
+                distance += pow(input_data.restaurants[j].dist(input_data.destinations[k]), 3);
+                distance += pow(input_data.destinations[j].dist(input_data.restaurants[k]), 3);
+            }
+
+            if (distance < min_dist) {
+                min_dist = distance;
+                nearest_restaurant = j;
+            }
+        }
+
+        true_candidate.push_back(nearest_restaurant);
+        orders.push_back(nearest_restaurant);
+
+        candidates.erase(remove(candidates.begin(), candidates.end(), nearest_restaurant), candidates.end());
+    }
+
+    route.push_back(input_data.office);
+    Point current_position = input_data.office;
+    int total_dist = 0;
+
+    unordered_map<int, bool> visited_restaurant;
+    for (int j : true_candidate) visited_restaurant[j] = false;
+
+    for (int i = 0; i < input_data.pickup_count * 2; ++i) {
+        int nearest_cand = -1;
+        int min_dist = 1000000;
+
+        for (int j : true_candidate) {
+            int distance = visited_restaurant[j] ? 
+                           current_position.dist(input_data.destinations[j]) :
+                           current_position.dist(input_data.restaurants[j]);
+
+            if (distance < min_dist) {
+                min_dist = distance;
+                nearest_cand = j;
+            }
+        }
+
+        if (visited_restaurant[nearest_cand]) {
+            current_position = input_data.destinations[nearest_cand];
+            true_candidate.erase(remove(true_candidate.begin(), true_candidate.end(), nearest_cand), true_candidate.end());
+            destination_dict[nearest_cand] = i + 1;
+        } else {
+            current_position = input_data.restaurants[nearest_cand];
+            visited_restaurant[nearest_cand] = true;
+            restaurant_dict[nearest_cand] = i + 1;
+        }
+
+        route.push_back(current_position);
+        total_dist += min_dist;
+    }
+
+    route.push_back(input_data.office);
+    total_dist += current_position.dist(input_data.office);
+
+    auto finish_time = steady_clock::now();
+    double elapsed_time = duration<double>(finish_time - start_time).count();
+
+    return Output(orders, route, destination_dict, restaurant_dict, elapsed_time);
+}
+int get_distance(const vector<Point>& route) {
+    int dist = 0;
+    for (size_t i = 0; i < route.size() - 1; ++i) {
+        dist += route[i].dist(route[i + 1]);
+    }
+    return dist;
+}
+
+int update_distance(const vector<Point>& route, int i, int j) {
+    if (i == j) return 0;
+
+    int before, after;
+    if (i > j) {
+        before = route[j].dist(route[j - 1]) + route[i].dist(route[i - 1]) + route[i + 1].dist(route[i]);
+        after = route[i].dist(route[j]) + route[i].dist(route[j - 1]) + route[i - 1].dist(route[i + 1]);
+    } else {
+        before = route[j + 1].dist(route[j]) + route[i].dist(route[i - 1]) + route[i + 1].dist(route[i]);
+        after = route[j + 1].dist(route[i]) + route[j].dist(route[i]) + route[i + 1].dist(route[i - 1]);
+    }
+    return after - before;
+}
+
+void update_index(unordered_map<int, int>& destination_dict, unordered_map<int, int>& restaurant_dict, int i, int j) {
+    if (i < j) {
+        for (auto& [key, value] : destination_dict)
+            if (value > i && value <= j) value--;
+        
+        for (auto& [key, value] : restaurant_dict)
+            if (value > i && value <= j) value--;
+    } else if (i > j) {
+        for (auto& [key, value] : destination_dict)
+            if (value < i && value >= j) value++;
+        
+        for (auto& [key, value] : restaurant_dict)
+            if (value < i && value >= j) value++;
+    }
+}
+
+Output solve_simulated_annealing(const Input& input_data, Output& output_data_greedy) {
+    vector<int> orders = output_data_greedy.orders;
+    vector<Point> route = output_data_greedy.route;
+    unordered_map<int, int> destination_dict = output_data_greedy.destination_dict;
+    unordered_map<int, int> restaurant_dict = output_data_greedy.restaurant_dict;
+    double greedy_time = output_data_greedy.time;
+
+    int current_dist = get_distance(route);
+
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_real_distribution<> dis(0.0, 1.0);
+
+    auto start_time = steady_clock::now();
+
+    double time_limit = 1.7 - greedy_time;
+    double start_temperature = 2e2;
+    double end_temperature = 1e0;
+
+    int iteration = 0;
+
+    while (true) {
+        auto current_time = steady_clock::now();
+        double elapsed = duration<double>(current_time - start_time).count();
+        if (elapsed >= time_limit) break;
+
+        int rand_orders = orders[gen() % orders.size()];
+
+        if (iteration % 2 == 1) {
+            int i = restaurant_dict[rand_orders];
+            int j = uniform_int_distribution<>(1, destination_dict[rand_orders] - 1)(gen);
+
+            int delta = update_distance(route, i, j);
+            double progress = elapsed / time_limit;
+            double temperature = pow(start_temperature, 1.0 - progress) * pow(end_temperature, progress);
+
+            if (delta <= 0 || dis(gen) < exp(-delta / temperature)) {
+                update_index(destination_dict, restaurant_dict, i, j);
+                restaurant_dict[rand_orders] = j;
+
+                Point point_to_move = route[i];
+                route.erase(route.begin() + i);
+                route.insert(route.begin() + j, point_to_move);
+
+                current_dist += delta;
+            }
+        } else {
+            int i = destination_dict[rand_orders];
+            int j = uniform_int_distribution<>(restaurant_dict[rand_orders] + 1, 2 * input_data.pickup_count)(gen);
+
+            int delta = update_distance(route, i, j);
+            double progress = elapsed / time_limit;
+            double temperature = pow(start_temperature, 1.0 - progress) * pow(end_temperature, progress);
+
+            if (delta <= 0 || dis(gen) < exp(-delta / temperature)) {
+                update_index(destination_dict, restaurant_dict, i, j);
+                destination_dict[rand_orders] = j;
+
+                Point point_to_move = route[i];
+                route.erase(route.begin() + i);
+                route.insert(route.begin() + j, point_to_move);
+
+                current_dist += delta;
+            }
+        }
+        iteration++;
+    }
+
+    auto finish_time = steady_clock::now();
+    double elapsed_time = duration<double>(finish_time - start_time).count();
+
+    cerr << "--- Result ---" << endl;
+    cerr << "Iteration     : " << iteration << endl;
+    cerr << "Total distance: " << current_dist << endl;
+
+    return Output(orders, route, destination_dict, restaurant_dict, elapsed_time);
+}
+int main() {
+    Input input_data = Input::read();
+    Output output_data_greedy = solve_greedy(input_data);
+    Output output_data = solve_simulated_annealing(input_data, output_data_greedy);
+    output_data.print_output();
+    return 0;
+}

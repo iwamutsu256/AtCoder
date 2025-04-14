@@ -1,5 +1,6 @@
-a,b,c = map(int,input().split())
-if a <= b and b <= c:
+A = list(map(int,input().split()))
+B = sorted(A)
+if A[1] == B[1]:
     print("Yes")
 else:
     print("No")

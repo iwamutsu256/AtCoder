@@ -41,14 +41,11 @@ def get_score():
     return score*10000
 
 
-def s_a():
+def hill():
     current_score = get_score()
     random.seed(42)
     start_time = time.time()
     time_limit = 1.7
-    start_temp = 1e-5
-    end_temp = 1e1
-    current_temp = start_temp
     iteration = 0
     while True:
         current_time = time.time()
@@ -66,7 +63,7 @@ def s_a():
         A[i][j] -= 1
         A[i][k] += 1
         new_point = get_score()
-        if new_point >= current_score or random.random() < math.exp((new_point - current_score) / current_temp):
+        if new_point >= current_score:
             #print(f"iteration: {iteration},score: {new_point}", file=sys.stderr)
             current_score = new_point
         else:
@@ -75,8 +72,6 @@ def s_a():
         iteration += 1
         if iteration % 1000 == 0:
             print(f"iteration: {iteration},score: {new_point}", file=sys.stderr)
-        progress = (current_time - start_time) / time_limit
-        current_temp = start_temp ** (1.0 - progress)* end_temp ** progress
     print("---Result---", file=sys.stderr)
     print("iteration     :",iteration, file=sys.stderr)
     print("total score: ",current_score, file=sys.stderr)
@@ -85,5 +80,5 @@ def result_print():
     for i in range(12):
         print(chr(math.floor(i/2)+97)," ".join(map(str,A[i])))
 
-s_a()
+hill()
 result_print()

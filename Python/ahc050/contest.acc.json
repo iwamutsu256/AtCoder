@@ -1,0 +1,20 @@
+{
+  "contest": {
+    "id": "ahc050",
+    "title": "AtCoder Heuristic Contest 050",
+    "url": "https://atcoder.jp/contests/ahc050"
+  },
+  "tasks": [
+    {
+      "id": "ahc050_a",
+      "label": "A",
+      "title": "Gamble on Ice",
+      "url": "https://atcoder.jp/contests/ahc050/tasks/ahc050_a",
+      "directory": {
+        "path": "a",
+        "testdir": "test",
+        "submit": "main.py"
+      }
+    }
+  ]
+}

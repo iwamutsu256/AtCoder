@@ -6,15 +6,21 @@ sys.setrecursionlimit(200010)
 
 class GridTuringRobotSolver:
     """
-    AHC問題「A - Grid Turing Robot」の解法クラス (Step 1: 貪欲法)
+    AHC問題「A - Grid Turing Robot」の解法クラス (Step 1 改良版)
 
-    コンセプト:
+    コンセプト (Step 1):
     - C (色数) = N*N: 各マス(i, j)に固有の色 c = i * N + j を割り当てる。
-    - Q (状態数) = K: 内部状態 q = k は「次に target_{k+1} を目指している」ことを示す。
+    - Q (状態数) = K: 内部状態 q は「次に target_{q+1} を目指している」ことを示す (q=0..K-2)。
+                     q = K-1 は「完了」状態。
     - 事前計算: 全ての目的地ペア (target_k -> target_{k+1}) について、
       target_{k+1} からBFSを行い、全マスからの最適移動方向を計算しておく。
-    - ルール生成: 実際にロボットをシミュレーションし、遭遇した (c, q) の組
-      に対する遷移ルールのみを生成する。
+
+    改良点 (むつきさんのご指摘):
+    - 目的地到着時の「停止(D='S')」を廃止。
+    - 目的地 (target_{q+1}) に到着したマス (色c) で状態 (q) だった場合、
+      ルール (c, q) は、状態を S = q+1 に更新し、*かつ*、
+      D = (次の目的地 target_{q+2} への最適方向) に設定する。
+    - これにより、ターン消費なしで次の目的地へ向かい始める。
     """
 
     def __init__(self):
@@ -32,10 +38,11 @@ class GridTuringRobotSolver:
 
         # C (色数) と Q (状態数) の設定
         self.C = self.N * self.N
-        self.Q = self.K
+        self.Q = self.K # 状態 0, 1, ..., K-1 (K-1は完了状態)
 
         # --- アルゴリズム核心部 (事前計算) ---
         # direction_fields[k][i][j] = target_{k+1} へ向かうための (i,j) での最適方向
+        # k は 0 から K-2 まで (K-1個のフィールド)
         self.direction_fields = []
         for k in range(self.K - 1):
             # target_{k+1} からBFSして方向場を計算
@@ -112,6 +119,7 @@ class GridTuringRobotSolver:
     def solve(self):
         """
         シミュレーションを実行し、ルールを生成して出力する。
+        (目的地到着時のターン消費をなくすよう改良)
         """
         
         # --- 初期盤面の生成 ---
@@ -124,38 +132,47 @@ class GridTuringRobotSolver:
         current_i, current_j = self.targets[0]
         current_q = 0 # 状態0 = 「target_1 を目指す」
         
-        visited_targets = 0 # (V=K達成確認用。このロジックでは不要だが念のため)
-        
-        if (current_i, current_j) == self.targets[0]:
-            visited_targets = 1
-
         # Tステップシミュレーション
         for step in range(self.T):
+            # --- 状態 K-1 (最後の目的地に到着済み) の処理 ---
             if current_q == self.K - 1:
-                # 既に最後の目的地に到達している (q = K-1)
-                # 念のため、停止ルールを追加
                 c = self.get_color(current_i, current_j)
-                if (c, current_q) not in rules:
-                    rules[(c, current_q)] = (c, current_q, 'S')
+                q = self.K - 1
+                # 完了状態 (K-1) になったら、どのマスでも停止(S)するルールを追加
+                if (c, q) not in rules:
+                    rules[(c, q)] = (c, q, 'S')
                 break # シミュレーション終了
 
+            # 現在の色と状態
             c = self.get_color(current_i, current_j)
             q = current_q
             
             # (c, q) のルールが未定義の場合のみ、ルールを決定する
             if (c, q) not in rules:
-                target_pos = self.targets[q + 1]
+                target_pos = self.targets[q + 1] # 現在目指している目的地
 
+                # --- 核心部: 目的地にジャストで到着したか？ ---
                 if (current_i, current_j) == target_pos:
                     # --- 次の目的地に到達した ---
                     A = c # 色は変えない
                     S = q + 1 # 状態を更新
-                    D = 'S' # 移動しない
+                    
+                    if S == self.K - 1:
+                        # 最後の目的地 (target_{K-1}) に到着した
+                        # 状態は K-1 に更新し、移動は停止(S)する
+                        D = 'S'
+                    else:
+                        # まだ中間の目的地
+                        # 状態を S (q+1) に更新し、
+                        # *次*の方向場 (direction_fields[S]) に従って移動する
+                        D = self.direction_fields[S][current_i][current_j]
+                
                 else:
                     # --- 目的地へ移動中 ---
                     A = c # 色は変えない
                     S = q # 状態はそのまま
-                    D = self.direction_fields[q][current_i][current_j] # 事前計算した最適方向
+                    # *今*の方向場 (direction_fields[q]) に従って移動する
+                    D = self.direction_fields[q][current_i][current_j]
                 
                 rules[(c, q)] = (A, S, D)
             
@@ -170,15 +187,6 @@ class GridTuringRobotSolver:
                 di, dj = self.DIJ[D]
                 current_i += di
                 current_j += dj
-                
-            # (デバッグ用) 目的地到達の確認
-            if current_q == visited_targets and (current_i, current_j) == self.targets[current_q]:
-                visited_targets += 1
-                if visited_targets == self.K:
-                    # 全て訪問完了。
-                    # current_q は K-1 になっているはず。
-                    # 次のループの冒頭でbreakする。
-                    pass
 
         # --- 出力 ---
         print(self.C, self.Q, len(rules))

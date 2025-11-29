@@ -13,11 +13,22 @@ if [ "$#" -ne 1 ]; then
 fi
 
 # --- 3. 変数の設定 ---
-X=$1 # 引数からスクリプト番号 (例: 3) を取得
-PYTHON_SCRIPT="main${X}.py"
-OUTPUT_DIR="out${X}"
-LOG_FILE="score_log_${X}.txt" # 実行ごとのログ
-SUMMARY_FILE="summary_${X}.txt" # 最終的な統計サマリ
+ARG=$1 # 引数を取得
+
+# 引数が整数かどうかでファイル名を分岐
+if [[ "$ARG" =~ ^[0-9]+$ ]]; then
+    # 整数なら従来の mainX.py 形式
+    PYTHON_SCRIPT="main${ARG}.py"
+    OUTPUT_DIR="out${ARG}"
+    LOG_FILE="score_log_${ARG}.txt"
+    SUMMARY_FILE="summary_${ARG}.txt"
+else
+    # 整数でなければ、引数名をそのまま使う (例: my_solver -> my_solver.py)
+    PYTHON_SCRIPT="${ARG}.py"
+    OUTPUT_DIR="out_${ARG}"
+    LOG_FILE="score_log_${ARG}.txt"
+    SUMMARY_FILE="summary_${ARG}.txt"
+fi
 
 START_CASE=0
 END_CASE=499

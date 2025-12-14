@@ -1,0 +1,20 @@
+{
+  "contest": {
+    "id": "ahc058",
+    "title": "ALGO ARTIS Programming Contest 2025 December（AtCoder Heuristic Contest 058）",
+    "url": "https://atcoder.jp/contests/ahc058"
+  },
+  "tasks": [
+    {
+      "id": "ahc058_a",
+      "label": "A",
+      "title": "Apple Incremental Game",
+      "url": "https://atcoder.jp/contests/ahc058/tasks/ahc058_a",
+      "directory": {
+        "path": "a",
+        "testdir": "test",
+        "submit": "main.py"
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "contest": {
+    "id": "ahc060",
+    "title": "RECRUIT Nihonbashi Half Marathon 2026 Winter (AtCoder Heuristic Contest 060)",
+    "url": "https://atcoder.jp/contests/ahc060"
+  },
+  "tasks": [
+    {
+      "id": "ahc060_a",
+      "label": "A",
+      "title": "Ice Cream Collection",
+      "url": "https://atcoder.jp/contests/ahc060/tasks/ahc060_a",
+      "directory": {
+        "path": "a",
+        "testdir": "test",
+        "submit": "main.py"
+      }
+    }
+  ]
+}

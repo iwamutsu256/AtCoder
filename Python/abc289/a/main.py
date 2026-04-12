@@ -1,7 +1,0 @@
-s = list(input())
-for i in range(len(s)):
-    if s[i] == "1":
-        s[i] = "0"
-    else:
-        s[i] = "1"
-print("".join(s))

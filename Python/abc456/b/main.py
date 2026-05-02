@@ -1,0 +1,20 @@
+A = list(map(int,input().split()))
+B = list(map(int,input().split()))
+C = list(map(int,input().split()))
+A4 = A.count(4)
+A5 = A.count(5)
+A6 = A.count(6)
+B4 = B.count(4)
+B5 = B.count(5)
+B6 = B.count(6)
+C4 = C.count(4)
+C5 = C.count(5)
+C6 = C.count(6)
+ans1 = A4*B5*C6/6**3
+ans2 = A4*B6*C5/6**3
+ans3 = A5*B4*C6/6**3
+ans4 = A6*B4*C5/6**3
+ans5 = A5*B6*C4/6**3
+ans6 = A6*B5*C4/6**3
+ans = ans1+ans2+ans3+ans4+ans5+ans6
+print(ans)
